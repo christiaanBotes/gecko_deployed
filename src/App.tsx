@@ -5,6 +5,8 @@ import Header from './components/Header';
 import RightSidebar from './components/RightSidebar';
 import IncidentList from './components/IncidentList';
 import IncidentDetail from './components/IncidentDetail';
+import WizSecurityList from './components/WizSecurityList';
+import WizVulnerabilityDetail from './components/WizVulnerabilityDetail';
 import AgentSimulator from './components/AgentSimulator';
 import PRDrawer from './components/PRDrawer';
 import NotificationSettings from './components/NotificationSettings';
@@ -12,17 +14,19 @@ import {
   DashboardView
 } from './components/OtherViews';
 
-import { INITIAL_INCIDENTS, INITIAL_ACTIVITIES } from './data';
-import { Incident, ActivityFeedItem, SuggestedFix } from './types';
+import { INITIAL_INCIDENTS, INITIAL_ACTIVITIES, INITIAL_VULNERABILITIES } from './data';
+import { Incident, ActivityFeedItem, SuggestedFix, WizVulnerability } from './types';
 
 export default function App() {
   const [incidents, setIncidents] = useState<Incident[]>(INITIAL_INCIDENTS);
   const [activities, setActivities] = useState<ActivityFeedItem[]>(INITIAL_ACTIVITIES);
+  const [vulnerabilities, setVulnerabilities] = useState<WizVulnerability[]>(INITIAL_VULNERABILITIES);
   
   // Navigation & Tabs
-  const [currentTab, setCurrentTab] = useState<string>('incidents'); // 'dashboard', 'incidents', 'notifications', 'agent-sandbox'
+  const [currentTab, setCurrentTab] = useState<string>('incidents'); // 'dashboard', 'incidents', 'notifications', 'agent-sandbox', 'wiz-security', 'wiz-detail'
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(INITIAL_INCIDENTS[0]); // default selected so view detail works
   const [lastSelectedDetail, setLastSelectedDetail] = useState<Incident | null>(INITIAL_INCIDENTS[0]);
+  const [selectedVulnerability, setSelectedVulnerability] = useState<WizVulnerability | null>(null);
 
   // Sidebar Toggling for Mobile
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -173,6 +177,10 @@ export default function App() {
 
   // Submit PR Success Handler
   const handlePRSubmitSuccess = () => {
+    if (currentTab === 'wiz-detail' && selectedVulnerability) {
+       handleWizPRSubmitSuccess();
+       return;
+    }
     if (!selectedIncident) return;
 
     // Update incident status to 'Mitigating'
@@ -238,6 +246,53 @@ export default function App() {
     setCurrentTab('incident-detail');
   };
 
+  const selectVulnerabilityCard = (vuln: WizVulnerability) => {
+    setSelectedVulnerability(vuln);
+    setCurrentTab('wiz-detail');
+  };
+
+  const handleWizPRSubmitSuccess = () => {
+    if (!selectedVulnerability) return;
+    setVulnerabilities(prev => prev.map(v => 
+      v.id === selectedVulnerability.id ? { ...v, status: 'In Progress' } : v
+    ));
+    setSelectedVulnerability(prev => prev ? { ...prev, status: 'In Progress' } : null);
+  };
+
+  const handleOpenWizPRModal = (vuln: WizVulnerability, fix: SuggestedFix) => {
+    // Reusing PRModal by wrapping the vulnerability up in a compatible object
+    // Assuming PRDrawer can work or we create a separate one. But for now
+    // let's create a wrapper or just use the same activeFixForPR state.
+    // Wait, PRDrawer requires `incident: Incident`. We can mock an incident 
+    // strictly for the PRDrawer prop requirement or just make `incident` prop optional 
+    // or create a union. Let's look at PRDrawer definition...
+    
+    // For now we'll mock an Incident specifically for PRDrawer to consume:
+    const mockIncident: Incident = {
+       id: vuln.id,
+       title: vuln.title,
+       description: vuln.description,
+       severity: vuln.severity,
+       status: 'Investigating',
+       service: vuln.resourceName,
+       assignee: 'Unassigned',
+       timestamp: vuln.discoveredAt,
+       createdAtText: 'Just now',
+       logs: '',
+       affectedServices: [vuln.resourceName],
+       slaStatus: 'Action Required',
+       keyFindings: [vuln.description],
+       fixes: vuln.geckoFixes,
+       rationale: 'Addressing security vulnerability.',
+       similarIncidents: []
+    };
+    
+    setSelectedIncident(mockIncident);
+    setLastSelectedDetail(mockIncident);
+    setActiveFixForPR(fix);
+    setIsPRDrawerOpen(true);
+  };
+
   const activeIncidentsCount = incidents.filter(i => i.status !== 'Resolved').length;
 
   return (
@@ -282,6 +337,21 @@ export default function App() {
           {currentTab === 'notifications' && <NotificationSettings />}
           {currentTab === 'agent-sandbox' && (
             <AgentSimulator onAddSimulatedIncident={handleAddSimulatedIncident} />
+          )}
+
+          {currentTab === 'wiz-security' && (
+            <WizSecurityList 
+              vulnerabilities={vulnerabilities}
+              onSelectVulnerability={selectVulnerabilityCard}
+            />
+          )}
+
+          {currentTab === 'wiz-detail' && selectedVulnerability && (
+            <WizVulnerabilityDetail 
+              vulnerability={selectedVulnerability}
+              onBack={() => setCurrentTab('wiz-security')}
+              onOpenPRModal={handleOpenWizPRModal}
+            />
           )}
 
           {currentTab === 'incidents' && (

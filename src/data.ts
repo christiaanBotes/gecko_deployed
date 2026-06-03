@@ -604,3 +604,82 @@ export const INITIAL_ACTIVITIES: ActivityFeedItem[] = [
     timestamp: '12m ago'
   }
 ];
+
+export const INITIAL_VULNERABILITIES = [
+  {
+    id: 'WIZ-7721',
+    title: 'Hardcoded AWS Access Key ID found in application properties',
+    severity: 'High',
+    status: 'Open',
+    resourceName: 'idp-orchestrator',
+    category: 'Secrets in Code',
+    discoveredAt: 'Jun 02, 2026 14:10 UTC',
+    description: 'A static AWS credentials access key was detected in the configuration files instead of injecting via environment variables or secret managers.',
+    geckoFixes: [
+      {
+        id: 'fix-wiz-1',
+        name: 'Migrate to Spring Cloud AWS Parameter Store',
+        confidence: 96,
+        description: 'Removes the hardcoded keys and references AWS SSM tokens.',
+        filePath: 'application-prod.yml',
+        diff: [
+          { lineNum: 14, content: '  aws:', type: 'normal' },
+          { lineNum: 15, content: '    credentials:', type: 'normal' },
+          { lineNum: 16, content: '      access-key: AKIAIOSFODNN7EXAMPLE', type: 'removed' },
+          { lineNum: 17, content: '      secret-key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', type: 'removed' },
+          { lineNum: 16, content: '      access-key: ${aws.secrets.accessKey}', type: 'added' },
+          { lineNum: 17, content: '      secret-key: ${aws.secrets.secretKey}', type: 'added' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'WIZ-7541',
+    title: 'Container image vulnerable to CVE-2023-38545 (libcurl)',
+    severity: 'High',
+    status: 'In Progress',
+    resourceName: 'docker.io/library/node:18.15-alpine',
+    category: 'Vulnerabilities',
+    discoveredAt: 'Jun 01, 2026 11:20 UTC',
+    description: 'The Node.js base container image includes a libcurl version vulnerable to SOCKS5 heap buffer overflows.',
+    geckoFixes: [
+      {
+        id: 'fix-wiz-2',
+        name: 'Update base image to patched version',
+        confidence: 99,
+        description: 'Updates the base Docker image constraint to at least Node 18.18 which contains library updates.',
+        filePath: 'Dockerfile',
+        diff: [
+          { lineNum: 1, content: 'FROM node:18.15-alpine AS builder', type: 'removed' },
+          { lineNum: 1, content: 'FROM node:18.18-alpine AS builder', type: 'added' },
+          { lineNum: 2, content: 'WORKDIR /usr/src/app', type: 'normal' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'WIZ-7402',
+    title: 'S3 Bucket publicly readable through incorrect IaC configuration',
+    severity: 'High',
+    status: 'Open',
+    resourceName: 'idp-public-assets-bucket',
+    category: 'Misconfigurations',
+    discoveredAt: 'May 28, 2026 09:12 UTC',
+    description: 'Terraform code assigns public-read ACL to an internal assets bucket.',
+    geckoFixes: [
+      {
+        id: 'fix-wiz-3',
+        name: 'Enforce private-only AWS S3 ACL',
+        confidence: 97,
+        description: 'Changes ACL parameters and prevents public bucket policies.',
+        filePath: 'main.tf',
+        diff: [
+          { lineNum: 40, content: 'resource "aws_s3_bucket" "assets" {', type: 'normal' },
+          { lineNum: 41, content: '  bucket = "idp-public-assets-bucket"', type: 'normal' },
+          { lineNum: 42, content: '  acl    = "public-read"', type: 'removed' },
+          { lineNum: 42, content: '  acl    = "private"', type: 'added' }
+        ]
+      }
+    ]
+  }
+];

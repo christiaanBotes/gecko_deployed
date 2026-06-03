@@ -55,3 +55,15 @@ export interface TriageStep {
   description: string;
   durationMs: number;
 }
+
+export interface WizVulnerability {
+  id: string;
+  title: string;
+  severity: Severity;
+  status: 'Open' | 'In Progress' | 'Resolved';
+  resourceName: string;
+  category: string;
+  discoveredAt: string;
+  description: string;
+  geckoFixes: SuggestedFix[];
+}

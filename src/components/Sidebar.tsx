@@ -7,7 +7,8 @@ import {
   BookOpen, 
   HelpCircle,
   Sparkles,
-  Bell
+  Bell,
+  ShieldAlert
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -82,6 +83,18 @@ export default function Sidebar({ currentTab, onTabChange, activeIncidentsCount 
           <span className="bg-[#0062d6] text-white text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded">
             Agent
           </span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('wiz-security')}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded font-medium text-sm transition-all duration-150 ${
+            currentTab === 'wiz-security'
+              ? 'bg-[#58a6ff]/20 text-[#004ba7]'
+              : 'text-[#424754] hover:text-[#191c1e] hover:bg-[#eceef0]'
+          }`}
+        >
+          <ShieldAlert className={`w-4 h-4 ${currentTab === 'wiz-security' ? 'text-[#0060aa]' : 'text-[#727785]'}`} />
+          <span>WIZ Security</span>
         </button>
 
         <button
