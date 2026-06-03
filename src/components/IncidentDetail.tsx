@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Share2, 
@@ -15,7 +15,8 @@ import {
   GitPullRequest,
   Check,
   ChevronRight,
-  Info
+  Info,
+  Ticket
 } from 'lucide-react';
 import { Incident, SuggestedFix, Severity, IncidentStatus } from '../types';
 
@@ -28,6 +29,26 @@ interface IncidentDetailProps {
 
 export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModal }: IncidentDetailProps) {
   const [activeFixId, setActiveFixId] = useState<string>('fix-1');
+
+  const [investigationStep, setInvestigationStep] = useState<number>(incident.isLiveDemo ? 0 : 4);
+
+  useEffect(() => {
+    if (incident.isLiveDemo && investigationStep < 4) {
+      if (investigationStep === 0) {
+        const tm = setTimeout(() => setInvestigationStep(1), 500);
+        return () => clearTimeout(tm);
+      } else if (investigationStep === 1) {
+        const tm = setTimeout(() => setInvestigationStep(2), 2000);
+        return () => clearTimeout(tm);
+      } else if (investigationStep === 2) {
+        const tm = setTimeout(() => setInvestigationStep(3), 2000);
+        return () => clearTimeout(tm);
+      } else if (investigationStep === 3) {
+        const tm = setTimeout(() => setInvestigationStep(4), 2000);
+        return () => clearTimeout(tm);
+      }
+    }
+  }, [incident.isLiveDemo, investigationStep]);
 
   // Find the selected fix
   const selectedFix = incident.fixes.find(f => f.id === activeFixId) || incident.fixes[0];
@@ -58,8 +79,8 @@ export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModa
             Back to All Incidents
           </button>
 
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-start gap-4">
+            <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="bg-[#ffdad6] text-[#ba1a1a] text-[10px] font-sans font-bold px-2 py-0.5 rounded flex items-center gap-1 border border-[#ba1a1a]/20">
                   <AlertTriangle className="w-3 h-3 text-[#ba1a1a]" />
@@ -71,9 +92,14 @@ export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModa
                 Incident #{incident.id}: {incident.title}
               </h1>
             </div>
-            <button className="bg-white hover:bg-[#eceef0] border border-[#c2c6d6] text-[#424754] px-3.5 py-1.5 rounded text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors cursor-pointer">
-              <Share2 className="w-3.5 h-3.5" /> Share
-            </button>
+            <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
+              <button className="bg-white hover:bg-[#eceef0] border border-[#c2c6d6] text-[#424754] px-3.5 py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer w-full">
+                <Share2 className="w-3.5 h-3.5" /> Share
+              </button>
+              <button className="bg-[#0052CC] hover:bg-[#0047b3] text-white px-3.5 py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer w-full">
+                <Ticket className="w-3.5 h-3.5" /> Create Issue in Jira
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -218,6 +244,17 @@ export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModa
           </div>
 
           <div className="p-5 relative z-10 text-xs text-[#424754] leading-relaxed space-y-4">
+            {investigationStep < 3 ? (
+               <div className="py-6 flex flex-col items-center justify-center text-center animate-pulse">
+                 <div className="w-8 h-8 rounded-full border-2 border-[#0062d6] border-t-transparent animate-spin mb-3"></div>
+                 <h4 className="text-[#191c1e] font-bold">
+                   {investigationStep === 0 ? "Initializing environment context..." : 
+                    investigationStep === 1 ? "Ingesting application telemetry and stack traces..." : 
+                    "Synthesizing Root Cause Analysis..."}
+                 </h4>
+               </div>
+            ) : (
+            <>
             {incident.isOutsideScope ? (
               <p className="text-[#191c1e] font-medium text-xs leading-relaxed">
                 Diagnostic parser indicates this ticket is a <span className="text-[#424754] font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-[#c2c6d6] font-mono">UI/UX Onboarding Inquiry</span>. It does not contain any backend log failures, call exceptions, or database timeout events.
@@ -228,7 +265,7 @@ export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModa
               </p>
             )}
 
-            <div className="bg-[#f8fafc] border border-[#c2c6d6] rounded-md p-4 text-xs">
+            <div className="bg-[#f8fafc] border border-[#c2c6d6] rounded-md p-4 text-xs animate-fade-in">
               <div className="flex items-center gap-1.5 text-[#191c1e] mb-2.5 font-bold">
                 <Info className="w-4 h-4 text-[#0060aa]" />
                 {incident.isOutsideScope ? 'Gecko Scope Triage Isolation Findings:' : 'Interactive Root Cause Findings:'}
@@ -241,12 +278,22 @@ export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModa
                 ))}
               </ul>
             </div>
+            </>
+            )}
           </div>
         </section>
 
         {/* SECTION 5: SUGGESTED CONFIGURATION FIX WITH INTERACTIVE DIFFS */}
-        {incident.isOutsideScope ? (
-          <section className="bg-white border border-[#c2c6d6] rounded-lg p-6 shadow-sm flex flex-col items-center text-center gap-3">
+        {investigationStep < 4 ? (
+          <section className="bg-white border border-[#c2c6d6] rounded-lg p-6 shadow-sm flex flex-col items-center justify-center text-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-[#f2f4f6] flex items-center justify-center text-gray-400 mb-2">
+                 <Code2 className="w-5 h-5 text-gray-500 animate-pulse" />
+             </div>
+             <h4 className="text-sm font-bold text-[#191c1e]">Generating Proposed Code Patch...</h4>
+             <p className="text-xs text-[#727785] max-w-sm">Gecko is synthesizing a verifiable structural code patch and validating it against local dependencies.</p>
+          </section>
+        ) : incident.isOutsideScope ? (
+          <section className="bg-white border border-[#c2c6d6] rounded-lg p-6 shadow-sm flex flex-col items-center text-center gap-3 animate-fade-in">
             <div className="w-10 h-10 rounded-full bg-[#f2f4f6] flex items-center justify-center text-gray-400">
               <Code2 className="w-5 h-5 text-gray-500" />
             </div>
@@ -344,7 +391,8 @@ export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModa
         )}
 
         {/* SECTION 6: Fix Rationale */}
-        <section className="bg-white border border-[#c2c6d6] rounded-lg p-5 shadow-sm">
+        {investigationStep === 4 && (
+        <section className="bg-white border border-[#c2c6d6] rounded-lg p-5 shadow-sm animate-fade-in">
           <h3 className="text-sm font-bold text-[#191c1e] mb-2 flex items-center gap-1.5">
             <span className="w-1.5 h-4 bg-[#004ba7] rounded-full inline-block"></span>
             Fix Rationale
@@ -372,6 +420,7 @@ export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModa
             </ul>
           </div>
         </section>
+        )}
 
       </div>
 
@@ -383,7 +432,15 @@ export default function IncidentDetail({ incident, onBack, onClaim, onOpenPRModa
         >
           Dismiss
         </button>
-        {incident.isOutsideScope ? (
+        {investigationStep < 4 ? (
+          <button 
+            disabled
+            className="px-6 py-2 bg-[#f2f4f6] text-[#727785] rounded font-semibold text-xs flex items-center gap-2 shadow-sm transition-all cursor-not-allowed opacity-80"
+          >
+            <div className="w-3 h-3 rounded-full border-2 border-[#727785] border-t-transparent animate-spin" />
+            Synthesizing Patch...
+          </button>
+        ) : incident.isOutsideScope ? (
           <button 
             disabled
             className="px-6 py-2 bg-gray-100 text-gray-400 border border-neutral-300 rounded font-semibold text-xs flex items-center gap-2 cursor-not-allowed select-none opacity-80"

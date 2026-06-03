@@ -34,6 +34,7 @@ export interface Incident {
   rationale: string;
   similarIncidents: { id: string; title: string }[];
   isOutsideScope?: boolean;
+  isLiveDemo?: boolean;
 }
 
 export interface ActivityFeedItem {

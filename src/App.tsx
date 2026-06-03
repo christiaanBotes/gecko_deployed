@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import RightSidebar from './components/RightSidebar';
@@ -32,6 +33,94 @@ export default function App() {
   // Pull Request Drawer State
   const [isPRDrawerOpen, setIsPRDrawerOpen] = useState<boolean>(false);
   const [activeFixForPR, setActiveFixForPR] = useState<SuggestedFix | null>(null);
+
+  // Live Demo Popup logic
+  const hasAddedLiveDemoIncident = useRef(false);
+  const [showLiveDemoBanner, setShowLiveDemoBanner] = useState<boolean>(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (currentTab === 'incidents' && !hasAddedLiveDemoIncident.current) {
+      timer = setTimeout(() => {
+        hasAddedLiveDemoIncident.current = true;
+        const liveDemoId = `INC-${Math.floor(4106 + Math.random() * 100)}`;
+        const liveDemoIncident: Incident = {
+          id: liveDemoId,
+          title: "Critical: Spring Boot Ingestion API - Concurrent Tenant Quota Bypass exhausting PostgreSQL limits",
+          description: "Incoming Alert: Multiple high-volume async file uploads are bypassing the tenant quota limiter, leading to complete database pool exhaustion during deep learning document processing workloads.",
+          severity: "High",
+          status: "Active",
+          service: "idp-ingestion-api",
+          assignee: "Unassigned",
+          timestamp: "Just now",
+          createdAtText: "Created exactly now",
+          logs: `2026-06-03 09:12:00 [INFO] [idp-ingestion-api] Tenant BMW-Munich starting bulk batch upload (10,000 documents)
+2026-06-03 09:12:01 [WARN] [QuotaValidator] Tenant quota cache evaluated as valid (0/5000) for thread-pool executor.
+2026-06-03 09:12:02 [ERROR] org.postgresql.util.PSQLException: FATAL: remaining connection slots are reserved for non-replication superuser connections
+2026-06-03 09:12:04 [FATAL] [HikariCP] idp_prod_db - Connection is not available, request timed out after 30000ms.
+2026-06-03 09:13:00 Exception in thread "http-nio-8080-exec-114" java.lang.OutOfMemoryError: Java heap space`,
+          affectedServices: ["idp-ingestion-api", "idp-tenant-metadata", "postgres-master-1"],
+          slaStatus: "Action Required - Critical Outage",
+          keyFindings: [
+            "A race condition inside QuotaValidator allows multiple parallel HTTP payload threads to read the identical tenant quota limit state from the Redis cache simultaneously before the initial batch writes its new quota increment.",
+            "This caused a massive influx of processing tokens hitting the idp-tenant-metadata database, instantly saturating the 200 HikariCP connections in PostgreSQL.",
+            "Implementing a distributed Redisson fair-lock across the asynchronous boundary forces threads to evaluate quota limits sequentially."
+          ],
+          fixes: [
+            {
+              id: "fix-live-demo-1",
+              name: "Implement Redisson Distributed Lock on Quota Checks",
+              confidence: 97,
+              description: "Acquires a centralized lease lock over tenant IDs during quota capacity increments.",
+              filePath: "QuotaValidatorService.java",
+              diff: [
+                { lineNum: 84, content: "  public boolean validateQuota(String tenantId, int batchSize) {", type: "normal" },
+                { lineNum: 85, content: "    int currentUsage = redisCache.getTenantUsage(tenantId);", type: "removed" },
+                { lineNum: 86, content: "    if (currentUsage + batchSize > MAX_LIMIT) { return false; }", type: "removed" },
+                { lineNum: 87, content: "    redisCache.incrementUsage(tenantId, batchSize);", type: "removed" },
+                { lineNum: 88, content: "    return true;", type: "removed" },
+                { lineNum: 85, content: "    RLock tenantLock = redissonClient.getLock(\"quota_lock:\" + tenantId);", type: "added" },
+                { lineNum: 86, content: "    try {", type: "added" },
+                { lineNum: 87, content: "        tenantLock.lock(10, TimeUnit.SECONDS);", type: "added" },
+                { lineNum: 88, content: "        int currentUsage = redisCache.getTenantUsage(tenantId);", type: "added" },
+                { lineNum: 89, content: "        if (currentUsage + batchSize > MAX_LIMIT) return false;", type: "added" },
+                { lineNum: 90, content: "        redisCache.incrementUsage(tenantId, batchSize);", type: "added" },
+                { lineNum: 91, content: "        return true;", type: "added" },
+                { lineNum: 92, content: "    } finally {", type: "added" },
+                { lineNum: 93, content: "        if (tenantLock.isHeldByCurrentThread()) tenantLock.unlock();", type: "added" },
+                { lineNum: 94, content: "    }", type: "added" },
+                { lineNum: 95, content: "  }", type: "normal" }
+              ]
+            }
+          ],
+          rationale: "Locking the quota increment sequence per-tenant using Redisson eliminates dirty-read race conditions that allowed aggressive API clients to overflow the microservice pool capacity.",
+          similarIncidents: [
+            { id: "INC-2191", title: "Redis dirty read on token usage API causing throttling limit bypass" }
+          ],
+          isLiveDemo: true
+        };
+
+        setIncidents(prev => [liveDemoIncident, ...prev]);
+
+        const seedActivity: ActivityFeedItem = {
+          id: `act-live-demo-${Math.random()}`,
+          incidentId: liveDemoId,
+          user: 'Gecko Agent',
+          isAi: true,
+          action: 'Gecko Agent caught anomalous logs and opened this incident automatically',
+          timestamp: 'Just now'
+        };
+        setActivities(prev => [seedActivity, ...prev]);
+
+        setShowLiveDemoBanner(true);
+        setTimeout(() => setShowLiveDemoBanner(false), 8000);
+
+      }, 5000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [currentTab]);
 
   // Claim handler
   const handleClaimIncident = (incidentId: string) => {
@@ -196,11 +285,41 @@ export default function App() {
           )}
 
           {currentTab === 'incidents' && (
-            <IncidentList 
-              incidents={incidents}
-              onSelectIncident={selectIncidentCard}
-              onOpenSimulator={() => setCurrentTab('agent-sandbox')}
-            />
+            <div className="flex flex-col flex-1 h-full min-h-0 relative">
+              <AnimatePresence>
+                {showLiveDemoBanner && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="absolute top-6 left-8 right-8 bg-[#e2e8f0] border border-[#c2c6d6] shadow-lg text-[#191c1e] px-4 py-3 rounded-lg flex items-center justify-between z-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#0062d6]/10 flex items-center justify-center">
+                         <span className="w-2.5 h-2.5 bg-[#0062d6] rounded-full animate-ping absolute"></span>
+                         <span className="w-2 h-2 bg-[#0062d6] rounded-full relative"></span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-[#191c1e]">Gecko Agent caught a new incident</h4>
+                        <p className="text-xs text-[#424754]">Critical: Spring Boot Ingestion API - Concurrent Tenant Quota Bypass exhausting PostgreSQL limits</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setShowLiveDemoBanner(false)}
+                      className="text-[#424754] hover:text-[#191c1e] text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#cbd5e1] transition-colors"
+                    >
+                      View
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <IncidentList 
+                incidents={incidents}
+                onSelectIncident={selectIncidentCard}
+                onOpenSimulator={() => setCurrentTab('agent-sandbox')}
+              />
+            </div>
           )}
 
           {currentTab === 'incident-detail' && lastSelectedDetail && (
