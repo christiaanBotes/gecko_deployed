@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Bell, Terminal, Settings, Menu } from 'lucide-react';
+import { Search, Bell, Terminal, Menu } from 'lucide-react';
 
 interface HeaderProps {
   onSearchChange: (query: string) => void;
@@ -48,9 +48,6 @@ export default function Header({ onSearchChange, searchQuery, onMenuToggle }: He
         </button>
         <button className="w-8 h-8 rounded flex items-center justify-center text-[#424754] hover:bg-[#e6e8ea] transition-colors cursor-pointer">
           <Terminal className="w-4.5 h-4.5" />
-        </button>
-        <button className="w-8 h-8 rounded flex items-center justify-center text-[#424754] hover:bg-[#e6e8ea] transition-colors cursor-pointer">
-          <Settings className="w-4.5 h-4.5" />
         </button>
         <div className="w-8 h-8 rounded-full bg-[#e0e3e5] border border-[#c2c6d6] ml-2 overflow-hidden cursor-pointer shadow-sm">
           <img 

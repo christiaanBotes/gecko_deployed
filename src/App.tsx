@@ -10,6 +10,7 @@ import WizVulnerabilityDetail from './components/WizVulnerabilityDetail';
 import AgentSimulator from './components/AgentSimulator';
 import PRDrawer from './components/PRDrawer';
 import NotificationSettings from './components/NotificationSettings';
+import ApiManagement from './components/ApiManagement';
 import { 
   DashboardView
 } from './components/OtherViews';
@@ -335,6 +336,7 @@ export default function App() {
         <main className="flex-grow flex flex-col min-h-full min-w-0 bg-[#f7f9fb] relative">
           {currentTab === 'dashboard' && <DashboardView />}
           {currentTab === 'notifications' && <NotificationSettings />}
+          {currentTab === 'api-management' && <ApiManagement />}
           {currentTab === 'agent-sandbox' && (
             <AgentSimulator onAddSimulatedIncident={handleAddSimulatedIncident} />
           )}

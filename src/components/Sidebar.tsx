@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  Terminal, 
   Menu, 
   LayoutDashboard, 
   Flame, 
@@ -8,8 +7,10 @@ import {
   HelpCircle,
   Sparkles,
   Bell,
-  ShieldAlert
+  ShieldAlert,
+  KeyRound
 } from 'lucide-react';
+import geckoLogo from '../../assets/leopard-gecko.png';
 
 interface SidebarProps {
   currentTab: string;
@@ -22,8 +23,8 @@ export default function Sidebar({ currentTab, onTabChange, activeIncidentsCount 
     <aside className="w-64 border-r border-[#e2e8f0] bg-[#f8fafc] flex flex-col h-full overflow-y-auto pt-5 pb-4 shrink-0 font-sans">
       {/* Brand area */}
       <div className="flex items-center gap-3 px-6 mb-8">
-        <div className="w-8 h-8 rounded bg-[#004ba7] flex items-center justify-center shrink-0 shadow-sm">
-          <Terminal className="text-white w-4.5 h-4.5" />
+        <div className="w-8 h-8 rounded overflow-hidden shrink-0">
+          <img src={geckoLogo} alt="Gecko" className="w-full h-full object-cover" />
         </div>
         <div>
           <h2 className="text-[#004ba7] font-bold text-lg tracking-tight leading-none flex items-center gap-1.5">
@@ -88,13 +89,25 @@ export default function Sidebar({ currentTab, onTabChange, activeIncidentsCount 
         <button
           onClick={() => onTabChange('wiz-security')}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded font-medium text-sm transition-all duration-150 ${
-            currentTab === 'wiz-security'
+            currentTab === 'wiz-security' || currentTab === 'wiz-detail'
               ? 'bg-[#58a6ff]/20 text-[#004ba7]'
               : 'text-[#424754] hover:text-[#191c1e] hover:bg-[#eceef0]'
           }`}
         >
-          <ShieldAlert className={`w-4 h-4 ${currentTab === 'wiz-security' ? 'text-[#0060aa]' : 'text-[#727785]'}`} />
+          <ShieldAlert className={`w-4 h-4 ${currentTab === 'wiz-security' || currentTab === 'wiz-detail' ? 'text-[#0060aa]' : 'text-[#727785]'}`} />
           <span>WIZ Security</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('api-management')}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded font-medium text-sm transition-all duration-150 ${
+            currentTab === 'api-management'
+              ? 'bg-[#e2e8f0] text-[#191c1e]'
+              : 'text-[#424754] hover:text-[#191c1e] hover:bg-[#eceef0]'
+          }`}
+        >
+          <KeyRound className="w-4 h-4 text-[#727785]" />
+          <span>API Management</span>
         </button>
 
         <button
